@@ -24,7 +24,7 @@
 #' @export
 sim_rand_eff <- function(random_var, n, rand_gen, ther = c(0, 1),
                          ther_sim = FALSE, cor_vars = NULL, ...) {
-
+  
   # Look to edit this with match.arg and switch functions
   if(ther_sim) {
     ther_val <- sapply(X = 1000000, FUN = rand_gen, ...)
@@ -48,7 +48,6 @@ sim_rand_eff <- function(random_var, n, rand_gen, ther = c(0, 1),
     reff <- t(es$vectors %*% diag(sqrt(pmax(ev, 0)), length(random_var)) %*% 
                 t(reff))
   }
-
- reff
+  
+  reff
 }
-

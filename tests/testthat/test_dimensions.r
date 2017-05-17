@@ -22,7 +22,7 @@ test_that('correct length sim_reg', {
   fixed_param <- c(4, 2, 6, 2.3, 7)
   random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
   cov_param <- list(dist_fun = c('rnorm', 'rnorm'),
-                    var_type = c("lvl1", "lvl2"),
+                    var_type = c("level1", "level2"),
                     opts = list(list(mean = 0, sd = 1.5),
                                 list(mean = 0, sd = 4)))
   n <- 150
@@ -45,7 +45,7 @@ test_that('correct length sim_reg', {
   random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
   random_param3 <- list(random_var = c(4, 2), rand_gen = 'rnorm')
   cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'),
-                    var_type = c("lvl1", "lvl2", "lvl3"),
+                    var_type = c("level1", "level2", "level3"),
                     opts = list(list(mean = 0, sd = 1.5),
                                 list(mean = 0, sd = 4), 
                                 list(mean = 0, sd = 2)))
@@ -56,11 +56,36 @@ test_that('correct length sim_reg', {
   with_err_gen <- 'rnorm'
   data_str <- "long"
   temp_three <- sim_reg(fixed, random, random3, fixed_param, random_param, 
-                        random_param3, cov_param, k,n, p, error_var, with_err_gen, data_str = data_str)
+                        random_param3, cov_param, k,n, p, error_var, with_err_gen, 
+                        data_str = data_str)
   expect_equal(nrow(temp_three), 15*10*10)
   expect_equal(length(table(temp_three$withinID)), 10)
   expect_equal(length(table(temp_three$clustID)), 15*10)
   expect_equal(length(table(temp_three$clust3ID)), 10)
+  
+  # Direct time specification
+  fixed <- ~1 + time + diff + act + time:act
+  random <- ~1 + time + diff
+  fixed_param <- c(4, 2, 6, 2.3, 7)
+  random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
+  cov_param <- list(dist_fun = c('rnorm', 'rnorm'),
+                    var_type = c("level1", "level2"),
+                    time_var = c(0, 1, 2, 4, 8),
+                    opts = list(list(mean = 0, sd = 1.5),
+                                list(mean = 0, sd = 4)))
+  n <- 150
+  p <- 5
+  error_var <- 4
+  with_err_gen <- 'rnorm'
+  data_str <- "long"
+  temp_long <- sim_reg(fixed, random, random3 = NULL, fixed_param, random_param, 
+                       random_param3 = NULL,
+                       cov_param, k = NULL, n, p, error_var, with_err_gen, 
+                       data_str = data_str)
+  expect_equal(nrow(temp_long), 150*5)
+  expect_equal(length(table(temp_long$withinID)), 5)
+  expect_equal(length(table(temp_long$clustID)), 150)
+  expect_equal(unique(temp_long$time), cov_param$time_var)
 })
 
 test_that('correct length sim_glm', {
@@ -84,7 +109,7 @@ test_that('correct length sim_glm', {
   fixed_param <- c(.1, .5, .4, .01, .8)
   random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
   cov_param <- list(dist_fun = c('rnorm', 'rnorm'),
-                    var_type = c("lvl1", "lvl2"),
+                    var_type = c("level1", "level2"),
                     opts = list(list(mean = 0, sd = 1.5),
                                 list(mean = 0, sd = 4)))
   n <- 150
@@ -105,7 +130,7 @@ test_that('correct length sim_glm', {
   random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
   random_param3 <- list(random_var = c(4, 2), rand_gen = 'rnorm')
   cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'), 
-                    var_type = c("lvl1", "lvl2", "lvl3"),
+                    var_type = c("level1", "level2", "level3"),
                     opts = list(list(mean = 0, sd = 1.5),
                                 list(mean = 0, sd = 4),
                                 list(mean = 0, sd = 2)))

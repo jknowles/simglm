@@ -141,11 +141,11 @@ test_that('two level power continuous', {
   fixed_param <- c(0, 0.2, 0.1, 0.3, 0.05)
   random_param <- list(random_var = c(7, 4), rand_gen = "rnorm")
   cov_param <- list(dist_fun = c('rnorm', 'rnorm'),
-                    var_type = c("lvl1", "lvl2"), 
+                    var_type = c("level1", "level2"), 
                     opts = list(list(mean = 0, sd = 1),
                                 list(mean = 0, sd = 1)))
-  n <- 150
-  p <- 30
+  n <- 15
+  p <- 3
   error_var <- 1
   data_str <- "long"
   pow_param <- c('time', 'diff', 'act')
@@ -158,7 +158,7 @@ test_that('two level power continuous', {
                        random_param = random_param, cov_param = cov_param, 
                        k = NULL, n = n, p = p,
                        error_var = error_var, with_err_gen = "rnorm",
-                       data_str = data_str, unbal = FALSE, 
+                       data_str = data_str, unbal = list(level2 = FALSE), 
                        pow_param = pow_param, alpha = alpha,
                        pow_dist = pow_dist, pow_tail = pow_tail, 
                        replicates = replicates, raw_power = FALSE)
@@ -174,7 +174,7 @@ test_that("three level power continuous", {
   random_param <- list(random_var = c(7, 4), rand_gen = 'rnorm')
   random_param3 <- list(random_var = c(4, 2), rand_gen = 'rnorm')
   cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'),
-                    var_type = c("lvl1", "lvl2", "lvl3"),
+                    var_type = c("level1", "level2", "level3"),
                     opts = list(list(mean = 0, sd = 1.5),
                                 list(mean = 0, sd = 4), 
                                 list(mean = 0, sd = 2)))
@@ -196,7 +196,8 @@ test_that("three level power continuous", {
                        cov_param = cov_param, 
                        k = k, n = n, p = p,
                        error_var = error_var, with_err_gen = "rnorm",
-                       data_str = data_str, unbal = FALSE, unbal3 = FALSE, 
+                       data_str = data_str, 
+                       unbal = list(level3 = FALSE, level2 = FALSE), 
                        pow_param = pow_param, alpha = alpha,
                        pow_dist = pow_dist, pow_tail = pow_tail, 
                        replicates = replicates, raw_power = FALSE)
@@ -211,11 +212,11 @@ test_that('two level power dich', {
   fixed_param <- c(0, 0.2, 0.1, 0.3, 0.05)
   random_param <- list(random_var = c(7, 4), rand_gen = "rnorm")
   cov_param <- list(dist_fun = c('rnorm', 'rnorm'),
-                    var_type = c("lvl1", "lvl2"),
+                    var_type = c("level1", "level2"),
                     opts = list(list(mean = 0, sd = 1),
                                 list(mean = 0, sd = 1)))
-  n <- 150
-  p <- 30
+  n <- 20
+  p <- 8
   data_str <- "long"
   pow_param <- c('time', 'diff', 'act')
   alpha <- .01
@@ -226,7 +227,7 @@ test_that('two level power dich', {
                        fixed_param = fixed_param, 
                        random_param = random_param, cov_param = cov_param, 
                        k = NULL, n = n, p = p,
-                       data_str = data_str, unbal = FALSE, 
+                       data_str = data_str, unbal = list(level2 = FALSE), 
                        pow_param = pow_param, alpha = alpha,
                        pow_dist = pow_dist, pow_tail = pow_tail, 
                        replicates = replicates, raw_power = FALSE)
@@ -243,13 +244,13 @@ test_that("three level power dich", {
   random_param <- list(random_var = 7, rand_gen = 'rnorm')
   random_param3 <- list(random_var = 4, rand_gen = 'rnorm')
   cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'), 
-                    var_type = c("lvl1", "lvl2", "lvl3"),
+                    var_type = c("level1", "level2", "level3"),
                     opts = list(list(mean = 0, sd = 1.5),
                                 list(mean = 0, sd = 4),
                                 list(mean = 0, sd = 2)))
   k <- 10
   n <- 15
-  p <- 5
+  p <- 6
   data_str <- "cross"
   pow_param <- c('diff', 'act', 'actClust')
   alpha <- .01
@@ -262,7 +263,8 @@ test_that("three level power dich", {
                        random_param3 = random_param3, 
                        cov_param = cov_param, 
                        k = k, n = n, p = p,
-                       data_str = data_str, unbal = FALSE, unbal3 = FALSE, 
+                       data_str = data_str, 
+                       unbal = list(level2 = FALSE, level3 = FALSE),
                        pow_param = pow_param, alpha = alpha,
                        pow_dist = pow_dist, pow_tail = pow_tail, 
                        replicates = replicates, raw_power = FALSE)

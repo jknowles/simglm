@@ -18,8 +18,8 @@
 #'  Must be same length as fixed.
 #' @param random_param A list of named elements that must contain: 
 #'   \itemize{
-#'      \item  random_var = variance of random parameters,
-#'      \item  rand_gen = Name of simulation function for random effects.
+#'      \item  random_var: variance of random parameters,
+#'      \item  rand_gen: Name of simulation function for random effects.
 #'   }
 #'          Optional elements are:
 #'   \itemize{
@@ -30,8 +30,8 @@
 #'    }
 #' @param random_param3 A list of named elements that must contain: 
 #'    \itemize{
-#'        \item random_var = variance of random parameters,
-#'        \item rand_gen = Name of simulation function for random effects.
+#'        \item random_var: variance of random parameters,
+#'        \item rand_gen: Name of simulation function for random effects.
 #'    }
 #'          Optional elements are:
 #'    \itemize{
@@ -45,7 +45,7 @@
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
+#'       either 'level1', 'level2', or 'level3'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -66,8 +66,8 @@
 #' @param fact_vars A nested list of factor, categorical, or ordinal variable 
 #'      specification, each list must include:
 #'   \itemize{
-#'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
+#'        \item numlevels: Number of levels for ordinal or factor variables.
+#'        \item var_type: Must be 'level1', 'level2', or 'level3'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -76,20 +76,19 @@
 #'        \item value.labels
 #'    }
 #'     See also \code{\link{sample}} for use of these optional arguments.
-#' @param unbal A vector of sample sizes for the number of observations for each
-#'  level 2 cluster. Must have same length as level two sample size n. 
-#'  Alternative specification can be TRUE, which uses additional argument, 
-#'  unbalCont.
-#' @param unbal3 A vector of sample sizes for the number of observations for 
-#'  each level 3 cluster. Must have same length as level two sample size k. 
-#'  Alternative specification can be TRUE, which uses additional argument, 
-#'  unbalCont3.
-#' @param unbalCont When unbal = TRUE, this specifies the minimum and maximum 
-#'  level one size, will be drawn from a random uniform distribution with min 
-#'  and max specified.
-#' @param unbalCont3 When unbal3 = TRUE, this specifies the minimum and maximum 
-#'  level two size, will be drawn from a random uniform distribution with min 
-#'  and max specified.
+#' @param unbal A named TRUE/FALSE list specifying whether unbalanced simulation 
+#'  design is desired. The named elements must be: "level2" or "level3" representing
+#'  unbalanced simulation for level two and three respectively. Default is FALSE,
+#'  indicating balanced sample sizes at both levels.
+#' @param unbal_design When unbal = TRUE, this specifies the design for unbalanced
+#'  simulation in one of two ways. It can represent the minimum and maximum 
+#'  sample size within a cluster via a named list. This will be drawn from a 
+#'  random uniform distribution with min and max specified. 
+#'  Secondly, the actual sample sizes within each cluster
+#'  can be specified. This takes the form of a vector that must have the same length 
+#'  as the level two or three sample size. These are specified as a named list in which
+#'  level two sample size is controlled via "level2" and level three sample size is 
+#'  controlled via "level3".
 #' @param lvl1_err_params Additional parameters passed as a list on to the 
 #' level one error generating function
 #' @param arima_mod A list indicating the ARIMA model to pass to arima.sim. 
@@ -105,18 +104,27 @@
 #' @param pow_dist Which distribution should be used when testing hypothesis 
 #'  test, z or t?
 #' @param pow_tail One-tailed or two-tailed test?
+#' @param lme4_fit_mod Valid lme4 syntax to be used for model fitting.
+#' @param nlme_fit_mod Valid nlme syntax to be used for model fitting. 
+#'   This should be specified as a named list with fixed and random components.
+#' @param arima_fit_mod Valid nlme syntax for fitting serial correlation structures.
+#'   See \code{\link{corStruct}} for help. This must be specified to 
+#'   include serial correlation.
 #' @param ... Not currently used.
+#' @importFrom purrr is_formula
 #' @export 
 sim_pow_nested3 <- function(fixed, random, random3, fixed_param, 
                             random_param = list(), random_param3 = list(), 
                             cov_param, k, n, p, error_var, with_err_gen, 
                             arima = FALSE, data_str, cor_vars = NULL, 
-                            fact_vars = list(NULL), unbal = FALSE, 
-                            unbal3 = FALSE, unbalCont = NULL, unbalCont3 = NULL,
+                            fact_vars = list(NULL), 
+                            unbal = list("level2" = FALSE, "level3" = FALSE), 
+                            unbal_design = list("level2" = NULL, "level3" = NULL),
                             lvl1_err_params = NULL, arima_mod = list(NULL), 
                             missing = FALSE, missing_args = list(NULL),
-                           pow_param = NULL, alpha, pow_dist = c("z", "t"), 
-                           pow_tail = c(1, 2), ...) {
+                            pow_param = NULL, alpha, pow_dist = c("z", "t"), 
+                            pow_tail = c(1, 2), lme4_fit_mod = NULL, 
+                            nlme_fit_mod = NULL, arima_fit_mod = NULL, ...) {
   
   fixed_vars <- attr(terms(fixed),"term.labels")   
   rand_vars <- attr(terms(random),"term.labels")
@@ -132,37 +140,72 @@ sim_pow_nested3 <- function(fixed, random, random3, fixed_param,
   temp_nest <- sim_reg_nested3(fixed, random, random3, fixed_param, random_param, 
                                random_param3, cov_param, k, n, p, error_var, 
                                with_err_gen, arima, data_str, cor_vars, 
-                               fact_vars, unbal, unbal3, unbalCont, unbalCont3, 
+                               fact_vars, unbal, unbal_design, 
                                lvl1_err_params, arima_mod, ...)
   if(missing) {
     temp_nest <- do.call(missing_data, c(list(sim_data = temp_nest), 
                                          missing_args))
   }
   
-  if(arima) {
-    # fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
-    # ran1 <- paste("~", paste(rand_vars, collapse = "+"), "|clustID", sep = "")
-    # 
-    # temp_mod <- nlme::lme(fixed = as.formula(fix1), data = temp_nest, 
-    # random = as.formula(ran1))
-    # test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
-  } else {
-    fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
-    if(missing) {
-      fix1 <- gsub('sim_data', 'sim_data2', fix1)
+  if(!is.null(lme4_fit_mod)) {
+    if(!purrr::is_formula(lme4_fit_mod)) {
+      stop('lme4_fit_mod must be a formula to pass to lmer')
     }
-    ran1 <- paste("(", paste(rand_vars, collapse = "+"), "| clustID)", sep = "")
-    if(length(rand_vars3) == 0) {
-      ran2 <- '(1 | clust3ID)'
-    } else {
-      ran2 <- paste('(', paste(rand_vars3, collapse = "+"), "| clust3ID)", 
-                    sep = "")
-    }
-    fm1 <- as.formula(paste(fix1, ran1, ran2, sep = "+ "))
-    
-    temp_mod <- lme4::lmer(fm1, data = temp_nest)
+    temp_mod <- lme4::lmer(lme4_fit_mod, data = temp_nest)
     test_stat <- data.frame(abs(summary(temp_mod)$coefficients[, 3]))
-  }
+  } else {
+    if(!is.null(nlme_fit_mod)) {
+      if(all(unlist(lapply(nlme_fit_mod, purrr::is_formula)))) {
+        temp_mod <- nlme::lme(fixed = nlme_fit_mod$fixed, data = temp_nest,
+                              random = nlme_fit_mod$random)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
+      } else {
+        if(!purrr::is_formula(nlme_fit_mod$fixed)) {
+          stop('nlme_fit_mod$fixed must be a formula to pass to lme')
+        } 
+        temp_mod <- nlme::lme(fixed = nlme_fit_mod$fixed, data = temp_nest,
+                              random = eval(parse(text = nlme_fit_mod$random)), 
+                              correlation = arima_fit_mod)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
+      }
+    } else {
+      if(arima) {
+        fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
+        if(missing) {
+          fix1 <- gsub('sim_data', 'sim_data2', fix1)
+        }
+        ran1 <- paste("list(clustID =~", paste(rand_vars, collapse = "+"), sep = "")
+        if(length(rand_vars3) == 0) {
+          ran2 <- 'clust3ID = ~ 1)'
+        } else {
+          ran2 <- paste('clust3ID = ~', paste(rand_vars3, collapse = "+"), ')',  
+                        sep = "")
+        }
+        ran <- paste(ran1, ran2, collapse = ', ')
+        
+        temp_mod <- nlme::lme(fixed = as.formula(fix1), data = temp_nest,
+                              random = eval(parse(text = ran)),
+                              correlation = arima_fit_mod)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
+      } else {
+        fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
+        if(missing) {
+          fix1 <- gsub('sim_data', 'sim_data2', fix1)
+        }
+        ran1 <- paste("(", paste(rand_vars, collapse = "+"), "| clustID)", sep = "")
+        if(length(rand_vars3) == 0) {
+          ran2 <- '(1 | clust3ID)'
+        } else {
+          ran2 <- paste('(', paste(rand_vars3, collapse = "+"), "| clust3ID)", 
+                        sep = "")
+        }
+        fm1 <- as.formula(paste(fix1, ran1, ran2, sep = "+ "))
+        
+        temp_mod <- lme4::lmer(fm1, data = temp_nest)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients[, 3]))
+      }
+    }
+  } 
   
   crit <- qnorm(alpha/pow_tail, lower.tail = FALSE)
   
@@ -197,8 +240,8 @@ sim_pow_nested3 <- function(fixed, random, random3, fixed_param,
 #'  Must be same length as fixed.
 #' @param random_param A list of named elements that must contain: 
 #'   \itemize{
-#'      \item  random_var = variance of random parameters,
-#'      \item  rand_gen = Name of simulation function for random effects.
+#'      \item  random_var: variance of random parameters,
+#'      \item  rand_gen: Name of simulation function for random effects.
 #'   }
 #'          Optional elements are:
 #'   \itemize{
@@ -212,7 +255,7 @@ sim_pow_nested3 <- function(fixed, random, random3, fixed_param,
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
+#'       either 'level1' or 'level2'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -232,8 +275,8 @@ sim_pow_nested3 <- function(fixed, random, random3, fixed_param,
 #' @param fact_vars A nested list of factor, categorical, or ordinal variable 
 #'      specification, each list must include:
 #'   \itemize{
-#'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
+#'        \item numlevels: Number of levels for ordinal or factor variables.
+#'        \item var_type: Must be 'level1' or 'level2'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -245,10 +288,14 @@ sim_pow_nested3 <- function(fixed, random, random3, fixed_param,
 #' @param unbal A vector of sample sizes for the number of observations for 
 #'  each level 2 cluster. Must have same length as level two sample size n. 
 #'  Alternative specification can be TRUE, which uses additional argument, 
-#'  unbalCont.
-#' @param unbalCont When unbal = TRUE, this specifies the minimum and maximum 
-#'  level one size, will be drawn from a random uniform distribution with min 
-#'  and max specified.
+#'  unbal_design.
+#' @param unbal_design When unbal = TRUE, this specifies the design for unbalanced
+#'  simulation in one of two ways. It can represent the minimum and maximum 
+#'  sample size within a cluster via a named list. This will be drawn from a 
+#'  random uniform distribution with min and max specified. 
+#'  Secondly, the sample sizes within each cluster can be specified. 
+#'  This takes the form of a vector that must have the same length 
+#'  as the level two sample size.
 #' @param lvl1_err_params Additional parameters passed as a list on to the level
 #'  one error generating function
 #' @param arima_mod A list indicating the ARIMA model to pass to arima.sim. 
@@ -264,15 +311,23 @@ sim_pow_nested3 <- function(fixed, random, random3, fixed_param,
 #' @param pow_dist Which distribution should be used when testing hypothesis 
 #'  test, z or t?
 #' @param pow_tail One-tailed or two-tailed test?
+#' @param lme4_fit_mod Valid lme4 syntax to be used for model fitting.
+#' @param nlme_fit_mod Valid nlme syntax to be used for model fitting. 
+#'   This should be specified as a named list with fixed and random components.
+#' @param arima_fit_mod Valid nlme syntax for fitting serial correlation structures.
+#'   See \code{\link{corStruct}} for help. This must be specified to 
+#'   include serial correlation.
 #' @param ... Not currently used.
 #' @export 
 sim_pow_nested <- function(fixed, random, fixed_param, random_param = list(), 
                         cov_param, n, p, error_var, with_err_gen, arima = FALSE, 
                         data_str, cor_vars = NULL, fact_vars = list(NULL),
-                        unbal = FALSE, unbalCont = NULL, lvl1_err_params = NULL,
+                        unbal = FALSE, unbal_design = NULL, lvl1_err_params = NULL,
                         arima_mod = list(NULL), missing = FALSE, 
                         missing_args = list(NULL), pow_param = NULL, alpha, 
-                        pow_dist = c("z", "t"), pow_tail = c(1, 2), ...) {
+                        pow_dist = c("z", "t"), pow_tail = c(1, 2), 
+                        lme4_fit_mod = NULL, 
+                        nlme_fit_mod = NULL, arima_fit_mod = NULL, ...) {
   
   fixed_vars <- attr(terms(fixed),"term.labels")    
   rand_vars <- attr(terms(random),"term.labels")
@@ -283,35 +338,63 @@ sim_pow_nested <- function(fixed, random, fixed_param, random_param = list(),
   if(any(pow_param %ni% c(fixed_vars, '(Intercept)'))) { 
     stop('pow_param must be a subset of fixed')
   }
-
+  
   temp_nest <- sim_reg_nested(fixed, random, fixed_param, random_param, 
                               cov_param, n, p, error_var, with_err_gen, arima,
-                              data_str, cor_vars, fact_vars, unbal, unbalCont,
+                              data_str, cor_vars, fact_vars, unbal, unbal_design,
                               lvl1_err_params, arima_mod, ...)
   if(missing) {
     temp_nest <- do.call(missing_data, c(list(sim_data = temp_nest), 
                                          missing_args))
   }
   
-  if(arima) {
-    # fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
-    # ran1 <- paste("~", paste(rand_vars, collapse = "+"), "|clustID", sep = "")
-    # 
-    # temp_mod <- nlme::lme(fixed = as.formula(fix1), data = temp_nest, 
-    # random = as.formula(ran1))
-    # test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
-  } else {
-    fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
-    if(missing) {
-      fix1 <- gsub('sim_data', 'sim_data2', fix1)
+  if(!is.null(lme4_fit_mod)) {
+    if(!purrr::is_formula(lme4_fit_mod)) {
+      stop('lme4_fit_mod must be a formula to pass to lmer')
     }
-    ran1 <- paste("(", paste(rand_vars, collapse = "+"), "|clustID)", sep = "")
-    fm1 <- as.formula(paste(fix1, ran1, sep = "+ "))
-    
-    temp_mod <- lme4::lmer(fm1, data = temp_nest)
+    temp_mod <- lme4::lmer(lme4_fit_mod, data = temp_nest)
     test_stat <- data.frame(abs(summary(temp_mod)$coefficients[, 3]))
+  } else {
+    if(!is.null(nlme_fit_mod)) {
+      if(all(unlist(lapply(nlme_fit_mod, purrr::is_formula)))) {
+        temp_mod <- nlme::lme(fixed = nlme_fit_mod$fixed, data = temp_nest,
+                              random = nlme_fit_mod$random, 
+                              correlation = arima_fit_mod)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
+      } else {
+        if(!purrr::is_formula(nlme_fit_mod$fixed)) {
+          stop('nlme_fit_mod$fixed must be a formula to pass to lme')
+        } 
+        temp_mod <- nlme::lme(fixed = nlme_fit_mod$fixed, data = temp_nest,
+                              random = eval(parse(text = nlme_fit_mod$random)), 
+                              correlation = arima_fit_mod)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
+      }
+    } else {
+      if(arima) {
+        fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
+        if(missing) {
+          fix1 <- gsub('sim_data', 'sim_data2', fix1)
+        }
+        ran1 <- paste("~", paste(rand_vars, collapse = "+"), "|clustID", sep = "")
+        
+        temp_mod <- nlme::lme(fixed = as.formula(fix1), data = temp_nest,
+                              random = as.formula(ran1), 
+                              correlation = arima_fit_mod)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients$fixed))
+      } else {
+        fix1 <- paste("sim_data ~", paste(fixed_vars, collapse = "+"))
+        if(missing) {
+          fix1 <- gsub('sim_data', 'sim_data2', fix1)
+        }
+        ran1 <- paste("(", paste(rand_vars, collapse = "+"), "|clustID)", sep = "")
+        fm1 <- as.formula(paste(fix1, ran1, sep = "+ "))
+        
+        temp_mod <- lme4::lmer(fm1, data = temp_nest)
+        test_stat <- data.frame(abs(summary(temp_mod)$coefficients[, 3]))
+      }
+    }
   }
-  
   crit <- qnorm(alpha/pow_tail, lower.tail = FALSE)
   
   if(is.null(pow_param)) {
@@ -326,7 +409,7 @@ sim_pow_nested <- function(fixed, random, fixed_param, random_param = list(),
   
   reject
 }
-
+  
 
 #' Function to simulate power.
 #' 
@@ -348,8 +431,7 @@ sim_pow_nested <- function(fixed, random, fixed_param, random_param = list(),
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
-#'       above.
+#'       'single'. Must be same order as fixed formula above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
 #'    see the examples for example code for this.
@@ -367,8 +449,8 @@ sim_pow_nested <- function(fixed, random, fixed_param, random_param = list(),
 #' @param fact_vars A nested list of factor, categorical, or ordinal variable 
 #'      specification, each list must include:
 #'   \itemize{
-#'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
+#'        \item numlevels: Number of levels for ordinal or factor variables.
+#'        \item var_type: Must be 'single'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -392,6 +474,7 @@ sim_pow_nested <- function(fixed, random, fixed_param, random_param = list(),
 #' @param pow_dist Which distribution should be used when testing hypothesis 
 #'  test, z or t?
 #' @param pow_tail One-tailed or two-tailed test?
+#' @param lm_fit_mod Valid lm syntax to be used for model fitting.
 #' @param ... Additional specification needed to pass to the random generating 
 #'             function defined by with_err_gen.
 #' @export 
@@ -400,7 +483,8 @@ sim_pow_single <- function(fixed, fixed_param, cov_param, n, error_var,
                       fact_vars = list(NULL), lvl1_err_params = NULL, 
                       arima_mod = list(NULL), missing = FALSE, 
                       missing_args = list(NULL), pow_param = NULL, alpha, 
-                      pow_dist = c("z", "t"), pow_tail = c(1, 2), ...) {
+                      pow_dist = c("z", "t"), pow_tail = c(1, 2), 
+                      lm_fit_mod = NULL, ...) {
   
   fixed_vars <- attr(terms(fixed),"term.labels")
   
@@ -413,14 +497,22 @@ sim_pow_single <- function(fixed, fixed_param, cov_param, n, error_var,
                                 cor_vars, fact_vars, lvl1_err_params, arima_mod,
                                 ...)
 
-  fm1 <- as.formula(paste("sim_data ~", paste(fixed_vars, collapse = "+")))
-  if(missing) {
-    temp_single <- do.call(missing_data, c(list(sim_data = temp_single), 
-                                           missing_args))
-    fm1 <- as.formula(paste("sim_data2 ~", paste(fixed_vars, collapse = "+")))
+  if(!is.null(lm_fit_mod)) {
+    if(!purrr::is_formula(lm_fit_mod)) {
+      stop('lm_fit_mod must be a formula to pass to lm')
+    }
+    temp_lm <- lm(lm_fit_mod, data = temp_single)
+  } else {
+    fm1 <- as.formula(paste("sim_data ~", paste(fixed_vars, collapse = "+")))
+    if(missing) {
+      temp_single <- do.call(missing_data, c(list(sim_data = temp_single), 
+                                             missing_args))
+      fm1 <- as.formula(paste("sim_data2 ~", paste(fixed_vars, collapse = "+")))
+    }
+    
+    temp_lm <- lm(fm1, data = temp_single)
   }
-  
-  temp_lm <- lm(fm1, data = temp_single)
+    
   
   crit <- ifelse(pow_dist == "z", qnorm(alpha/pow_tail, lower.tail = FALSE), 
                 qt(alpha/pow_tail, df = nrow(temp_single) - length(fixed_param),

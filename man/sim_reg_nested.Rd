@@ -6,7 +6,7 @@
 \usage{
 sim_reg_nested(fixed, random, fixed_param, random_param = list(), cov_param,
   n, p, error_var, with_err_gen, arima = FALSE, data_str, cor_vars = NULL,
-  fact_vars = list(NULL), unbal = FALSE, unbalCont = NULL,
+  fact_vars = list(NULL), unbal = FALSE, unbal_design = NULL,
   lvl1_err_params = NULL, arima_mod = list(NULL), contrasts = NULL, ...)
 }
 \arguments{
@@ -37,7 +37,7 @@ Must be same length as fixed.}
  \itemize{
    \item dist_fun: This is a quoted R distribution function.
    \item var_type: This is the level of variable to generate. Must be 
-     either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
+     either 'level1' or 'level2'. Must be same order as fixed formula 
      above.
  }
  Optional arguments to the distribution functions are in a nested list,
@@ -66,7 +66,7 @@ See \code{\link{arima.sim}} for examples.}
    specification, each list must include:
 \itemize{
      \item numlevels = Number of levels for ordinal or factor variables.
-     \item var_type = Must be 'lvl1' or 'lvl2'.
+     \item var_type = Must be 'level1' or 'level2'.
  }
  Optional arguments include:
  \itemize{
@@ -79,11 +79,15 @@ See \code{\link{arima.sim}} for examples.}
 \item{unbal}{A vector of sample sizes for the number of observations for 
 each level 2 cluster. Must have same length as level two sample size n. 
 Alternative specification can be TRUE, which uses additional argument, 
-unbalCont.}
+unbal_design.}
 
-\item{unbalCont}{When unbal = TRUE, this specifies the minimum and maximum 
-level one size, will be drawn from a random uniform distribution with min 
-and max specified.}
+\item{unbal_design}{When unbal = TRUE, this specifies the design for unbalanced
+simulation in one of two ways. It can represent the minimum and maximum 
+sample size within a cluster via a named list. This will be drawn from a 
+random uniform distribution with min and max specified. 
+Secondly, the sample sizes within each cluster can be specified. 
+This takes the form of a vector that must have the same length 
+as the level two sample size.}
 
 \item{lvl1_err_params}{Additional parameters passed as a list on to the 
 level one error generating function}
@@ -112,7 +116,7 @@ random <- ~1 + time + diff
 fixed_param <- c(4, 2, 6, 2.3, 7)
 random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 cov_param <- list(dist_fun = c('rnorm', 'rnorm'), 
-  var_type = c("lvl1", "lvl2"),
+  var_type = c("level1", "level2"),
   opts = list(list(mean = 0, sd = 1.5), 
   list(mean = 0, sd = 4)))
 n <- 150
@@ -129,4 +133,3 @@ temp_long <- sim_reg(fixed, random, random3 = NULL, fixed_param,
 \code{\link{sim_reg}} for a convenient wrapper for all data 
  conditions.
 }
-

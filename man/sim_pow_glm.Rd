@@ -7,11 +7,12 @@
 sim_pow_glm(fixed, random = NULL, random3 = NULL, fixed_param,
   random_param = list(NULL), random_param3 = list(NULL), cov_param,
   k = NULL, n, p = NULL, data_str, cor_vars = NULL,
-  fact_vars = list(NULL), unbal = FALSE, unbal3 = FALSE,
-  unbalCont = NULL, unbalCont3 = NULL, missing = FALSE,
+  fact_vars = list(NULL), unbal = list(level2 = FALSE, level3 = FALSE),
+  unbal_design = list(level2 = NULL, level3 = NULL), missing = FALSE,
   missing_args = list(NULL), pow_param, alpha, pow_dist = c("z", "t"),
   pow_tail = c(1, 2), replicates, terms_vary = NULL, raw_power = TRUE,
-  ...)
+  glm_fit_mod = NULL, lme4_fit_mod = NULL, glm_fit_family = NULL,
+  lme4_fit_family = NULL, ...)
 }
 \arguments{
 \item{fixed}{One sided formula for fixed effects in the simulation. 
@@ -28,8 +29,8 @@ Must be same length as fixed.}
 
 \item{random_param}{A list of named elements that must contain: 
 \itemize{
-   \item  random_var = variance of random parameters,
-   \item  rand_gen = Name of simulation function for random effects.
+   \item  random_var: variance of random parameters,
+   \item  rand_gen: Name of simulation function for random effects.
 }
        Optional elements are:
 \itemize{
@@ -41,8 +42,8 @@ Must be same length as fixed.}
 
 \item{random_param3}{A list of named elements that must contain: 
 \itemize{
-    \item random_var = variance of random parameters,
-    \item rand_gen = Name of simulation function for random effects.
+    \item random_var: variance of random parameters,
+    \item rand_gen: Name of simulation function for random effects.
 }
       Optional elements are:
 \itemize{
@@ -57,8 +58,8 @@ Must be same length as fixed.}
  \itemize{
    \item dist_fun: This is a quoted R distribution function.
    \item var_type: This is the level of variable to generate. Must be 
-     either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
-     above.
+     either 'single', 'level1', 'level2', or 'level3'. 
+     Must be same order as fixed formula above.
  }
  Optional arguments to the distribution functions are in a nested list,
   see the examples for example code for this.
@@ -78,7 +79,7 @@ Does not include intercept, time, factors, or interactions.}
    specification, each list must include:
 \itemize{
      \item numlevels = Number of levels for ordinal or factor variables.
-     \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
+     \item var_type = Must be 'single', 'level1', 'level2', or 'level3'.
  }
  Optional arguments include:
  \itemize{
@@ -88,23 +89,20 @@ Does not include intercept, time, factors, or interactions.}
  }
   See also \code{\link{sample}} for use of these optional arguments.}
 
-\item{unbal}{A vector of sample sizes for the number of observations for each
-level 2 cluster. Must have same length as level two sample size n. 
-Alternative specification can be TRUE, which uses additional argument, 
-unbalCont.}
+\item{unbal}{A named TRUE/FALSE list specifying whether unbalanced simulation 
+design is desired. The named elements must be: "level2" or "level3" representing
+unbalanced simulation for level two and three respectively. Default is FALSE,
+indicating balanced sample sizes at both levels.}
 
-\item{unbal3}{A vector of sample sizes for the number of observations for 
-each level 3 cluster. Must have same length as level two sample size k. 
-Alternative specification can be TRUE, which uses additional argument, 
-unbalCont3.}
-
-\item{unbalCont}{When unbal = TRUE, this specifies the minimum and maximum 
-level one size, will be drawn from a random uniform distribution with min 
-and max specified.}
-
-\item{unbalCont3}{When unbal3 = TRUE, this specifies the minimum and maximum 
-level two size, will be drawn from a random uniform distribution with min 
-and max specified.}
+\item{unbal_design}{When unbal = TRUE, this specifies the design for unbalanced
+simulation in one of two ways. It can represent the minimum and maximum 
+sample size within a cluster via a named list. This will be drawn from a 
+random uniform distribution with min and max specified. 
+Secondly, the actual sample sizes within each cluster
+can be specified. This takes the form of a vector that must have the same length 
+as the level two or three sample size. These are specified as a named list in which
+level two sample size is controlled via "level2" and level three sample size is 
+controlled via "level3".}
 
 \item{missing}{TRUE/FALSE flag indicating whether missing data should be 
 simulated.}
@@ -135,6 +133,14 @@ should not be included as arguments in the function call.}
 returned. Default is TRUE, which will create a new nested column with 
 raw data by variable(s) manipulated in power analysis.}
 
+\item{glm_fit_mod}{Valid glm syntax to be used for model fitting.}
+
+\item{lme4_fit_mod}{Valid lme4 syntax to be used for model fitting.}
+
+\item{glm_fit_family}{Valid family syntax to pass to the glm function.}
+
+\item{lme4_fit_family}{Valid lme4 family specification passed to glmer.}
+
 \item{...}{Current not used.}
 }
 \description{
@@ -146,4 +152,3 @@ simple generalized regression and the generalized linear mixed model power
 functions. This function replicates the power call a specified number of 
 times and prints outs a matrix with the results.
 }
-
