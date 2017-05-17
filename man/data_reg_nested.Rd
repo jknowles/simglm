@@ -25,3 +25,4 @@ data_reg_nested(Xmat, Zmat, beta, rand_eff, n, p, err)
 Takes simulation parameter arguments and 
 returns simulated data.
 }
+

@@ -99,3 +99,4 @@ temp_single <- sim_reg(fixed = fixed, fixed_param = fixed_param,
 \code{\link{sim_reg}} for a convenient wrapper for all data 
 conditions.
 }
+

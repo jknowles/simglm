@@ -8,7 +8,7 @@ sim_pow_single(fixed, fixed_param, cov_param, n, error_var, with_err_gen,
   arima = FALSE, data_str, cor_vars = NULL, fact_vars = list(NULL),
   lvl1_err_params = NULL, arima_mod = list(NULL), missing = FALSE,
   missing_args = list(NULL), pow_param = NULL, alpha, pow_dist = c("z",
-  "t"), pow_tail = c(1, 2), lm_fit_mod = NULL, ...)
+  "t"), pow_tail = c(1, 2), ...)
 }
 \arguments{
 \item{fixed}{One sided formula for fixed effects in the simulation. 
@@ -22,7 +22,8 @@ Must be same length as fixed.}
  \itemize{
    \item dist_fun: This is a quoted R distribution function.
    \item var_type: This is the level of variable to generate. Must be 
-     'single'. Must be same order as fixed formula above.
+     either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
+     above.
  }
  Optional arguments to the distribution functions are in a nested list,
   see the examples for example code for this.
@@ -47,8 +48,8 @@ See \code{\link{arima.sim}} for examples.}
 \item{fact_vars}{A nested list of factor, categorical, or ordinal variable 
    specification, each list must include:
 \itemize{
-     \item numlevels: Number of levels for ordinal or factor variables.
-     \item var_type: Must be 'single'.
+     \item numlevels = Number of levels for ordinal or factor variables.
+     \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
  }
  Optional arguments include:
  \itemize{
@@ -81,8 +82,6 @@ test, z or t?}
 
 \item{pow_tail}{One-tailed or two-tailed test?}
 
-\item{lm_fit_mod}{Valid lm syntax to be used for model fitting.}
-
 \item{...}{Additional specification needed to pass to the random generating 
 function defined by with_err_gen.}
 }
@@ -98,3 +97,4 @@ power. Use \code{\link{sim_pow}} as a convenient wrapper for this.
 \seealso{
 \code{\link{sim_pow}} for a wrapper to replicate.
 }
+

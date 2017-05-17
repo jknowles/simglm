@@ -47,8 +47,8 @@
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'single', 'level1', 'level2', or 'level3'. 
-#'       Must be same order as fixed formula above.
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
+#'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
 #'    see the examples for example code for this.
@@ -70,7 +70,7 @@
 #'      specification, each list must include:
 #'   \itemize{
 #'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'single', 'level1', 'level2', or 'level3'.
+#'        \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -79,19 +79,20 @@
 #'        \item value.labels
 #'    }
 #'     See also \code{\link{sample}} for use of these optional arguments.
-#' @param unbal A named TRUE/FALSE list specifying whether unbalanced simulation 
-#'  design is desired. The named elements must be: "level2" or "level3" representing
-#'  unbalanced simulation for level two and three respectively. Default is FALSE,
-#'  indicating balanced sample sizes at both levels.
-#' @param unbal_design When unbal = TRUE, this specifies the design for unbalanced
-#'  simulation in one of two ways. It can represent the minimum and maximum 
-#'  sample size within a cluster via a named list. This will be drawn from a 
-#'  random uniform distribution with min and max specified. 
-#'  Secondly, the actual sample sizes within each cluster
-#'  can be specified. This takes the form of a vector that must have the same length 
-#'  as the level two or three sample size. These are specified as a named list in which
-#'  level two sample size is controlled via "level2" and level three sample size is 
-#'  controlled via "level3".
+#' @param unbal A vector of sample sizes for the number of observations for 
+#'  each level 2 cluster. Must have same length as level two sample size n. 
+#'  Alternative specification can be TRUE, which uses additional argument, 
+#'  unbalCont.
+#' @param unbal3 A vector of sample sizes for the number of observations for 
+#'  each level 3 cluster. Must have same length as level two sample size k. 
+#'  Alternative specification can be TRUE, which uses additional argument, 
+#'  unbalCont3.
+#' @param unbalCont When unbal = TRUE, this specifies the minimum and 
+#'  maximum level one size, will be drawn from a random uniform distribution 
+#'  with min and max specified.
+#' @param unbalCont3 When unbal3 = TRUE, this specifies the minimum and 
+#'  maximum level two size, will be drawn from a random uniform distribution 
+#'  with min and max specified.
 #' @param lvl1_err_params Additional parameters passed as a list on to the 
 #'  level one error generating function
 #' @param arima_mod A list indicating the ARIMA model to pass to arima.sim. 
@@ -126,7 +127,7 @@
 #' fixed_param <- c(4, 2, 6, 2.3, 7)
 #' random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 #' cov_param <- list(dist_fun = c('rnorm', 'rnorm'), 
-#'   var_type = c("level1", "level2"),
+#'   var_type = c("lvl1", "lvl2"),
 #'   opts = list(list(mean = 0, sd = 1.5), 
 #'   list(mean = 0, sd = 4)))
 #' n <- 150
@@ -152,7 +153,7 @@
 #' random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 #' random_param3 <- list(random_var = c(4, 2), rand_gen = 'rnorm')
 #' cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'), 
-#'      var_type = c("level1", "level2", "level3"),
+#'      var_type = c("lvl1", "lvl2", "lvl3"),
 #'      opts = list(list(mean = 0, sd = 1.5),
 #'      list(mean = 0, sd = 4),
 #'      list(mean = 0, sd = 2)))
@@ -175,9 +176,8 @@ sim_reg <- function(fixed, random, random3, fixed_param,
                     random_param = list(), random_param3 = list(), cov_param, 
                     k, n, p, error_var, with_err_gen, arima = FALSE,
                     data_str, cor_vars = NULL, fact_vars = list(NULL), 
-                    unbal = list("level2" = FALSE, "level3" = FALSE), 
-                    unbal_design = list("level2" = NULL, "level3" = NULL), 
-                    lvl1_err_params = NULL,
+                    unbal = FALSE, unbal3 = FALSE, unbalCont = NULL, 
+                    unbalCont3 = NULL, lvl1_err_params = NULL,
                     arima_mod = list(NULL), ...) {
   
   if(data_str == "single"){
@@ -188,13 +188,13 @@ sim_reg <- function(fixed, random, random3, fixed_param,
   	if (is.null(k)){
   	  sim_reg_nested(fixed, random, fixed_param, random_param, cov_param, n, p, 
   	                 error_var, with_err_gen, arima, data_str, cor_vars, 
-  	                 fact_vars, unbal, unbal_design, lvl1_err_params, 
+  	                 fact_vars, unbal, unbalCont, lvl1_err_params, 
   	                 arima_mod, ...)
   } else {
     sim_reg_nested3(fixed, random, random3, fixed_param, random_param, 
                     random_param3, cov_param, k, n, p, error_var, with_err_gen, 
-                    arima, data_str, cor_vars, fact_vars, unbal, 
-                    unbal_design, lvl1_err_params, arima_mod, ...)
+                    arima, data_str, cor_vars, fact_vars, unbal, unbal3, 
+                    unbalCont, unbalCont3, lvl1_err_params, arima_mod, ...)
   }
  }
 }
@@ -248,8 +248,7 @@ sim_reg <- function(fixed, random, random3, fixed_param,
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'single', 'level1', 'level2', or 'level3'. 
-#'       Must be same order as fixed formula 
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -265,7 +264,7 @@ sim_reg <- function(fixed, random, random3, fixed_param,
 #'      specification, each list must include:
 #'   \itemize{
 #'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'single', 'level1', 'level2', or 'level3'.
+#'        \item var_type = Must be 'single', 'lvl1', 'lvl2', or 'lvl3'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -274,19 +273,20 @@ sim_reg <- function(fixed, random, random3, fixed_param,
 #'        \item value.labels
 #'    }
 #'     See also \code{\link{sample}} for use of these optional arguments.
-#' @param unbal A named TRUE/FALSE list specifying whether unbalanced simulation 
-#'  design is desired. The named elements must be: "level2" or "level3" representing
-#'  unbalanced simulation for level two and three respectively. Default is FALSE,
-#'  indicating balanced sample sizes at both levels.
-#' @param unbal_design When unbal = TRUE, this specifies the design for unbalanced
-#'  simulation in one of two ways. It can represent the minimum and maximum 
-#'  sample size within a cluster via a named list. This will be drawn from a 
-#'  random uniform distribution with min and max specified. 
-#'  Secondly, the actual sample sizes within each cluster
-#'  can be specified. This takes the form of a vector that must have the same length 
-#'  as the level two or three sample size. These are specified as a named list in which
-#'  level two sample size is controlled via "level2" and level three sample size is 
-#'  controlled via "level3".
+#' @param unbal A vector of sample sizes for the number of observations for 
+#'  each level 2 cluster. Must have same length as level two sample size n. 
+#'  Alternative specification can be TRUE, which uses additional argument, 
+#'  unbalCont.
+#' @param unbal3 A vector of sample sizes for the number of observations for 
+#'  each level 3 cluster. Must have same length as level two sample size k. 
+#'  Alternative specification can be TRUE, which uses additional argument, 
+#'  unbalCont3.
+#' @param unbalCont When unbal = TRUE, this specifies the minimum and maximum 
+#'  level one size, will be drawn from a random uniform distribution with min 
+#'  and max specified.
+#' @param unbalCont3 When unbal3 = TRUE, this specifies the minimum and 
+#'  maximum level two size, will be drawn from a random uniform distribution 
+#'  with min and max specified.
 #' @export 
 #' 
 #' @examples
@@ -309,7 +309,7 @@ sim_reg <- function(fixed, random, random3, fixed_param,
 #' fixed_param <- c(4, 2, 6, 2.3, 7)
 #' random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 #' cov_param <- list(dist_fun = c('rnorm', 'rnorm'),
-#'    var_type = c("level1", "level2"),
+#'    var_type = c("lvl1", "lvl2"),
 #'    opts = list(list(mean = 0, sd = 1.5),
 #'    list(mean = 0, sd = 4)))
 #' n <- 150
@@ -328,7 +328,7 @@ sim_reg <- function(fixed, random, random3, fixed_param,
 #' random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 #' random_param3 <- list(random_var = c(4, 2), rand_gen = 'rnorm')
 #' cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'), 
-#'    var_type = c("level1", "level2", "level3"),
+#'    var_type = c("lvl1", "lvl2", "lvl3"),
 #'    opts = list(list(mean = 0, sd = 1.5),
 #'    list(mean = 0, sd = 4),
 #'    list(mean = 0, sd = 2)))
@@ -343,8 +343,8 @@ sim_reg <- function(fixed, random, random3, fixed_param,
 sim_glm <- function(fixed, random, random3, fixed_param, random_param = list(), 
                     random_param3 = list(), cov_param, k, n, p, 
                     data_str, cor_vars = NULL, fact_vars = list(NULL), 
-                    unbal = list("level2" = FALSE, "level3" = FALSE), 
-                    unbal_design = list("level2" = NULL, "level3" = NULL)) {
+                    unbal = FALSE, unbal3 = FALSE, 
+                    unbalCont = NULL, unbalCont3 = NULL) {
   
   if(data_str == "single"){
     sim_glm_single(fixed, fixed_param, cov_param, n, data_str, 
@@ -352,11 +352,11 @@ sim_glm <- function(fixed, random, random3, fixed_param, random_param = list(),
   } else {
     if (is.null(k)){
       sim_glm_nested(fixed, random, fixed_param, random_param, cov_param, n, p, 
-                     data_str, cor_vars, fact_vars, unbal, unbal_design)
+                     data_str, cor_vars, fact_vars, unbal, unbalCont)
     } else {
       sim_glm_nested3(fixed, random, random3, fixed_param, random_param, 
                       random_param3, cov_param, k, n, p, data_str, cor_vars, 
-                      fact_vars, unbal, unbal_design)
+                      fact_vars, unbal, unbal3, unbalCont, unbalCont3)
     }
   }
 }
