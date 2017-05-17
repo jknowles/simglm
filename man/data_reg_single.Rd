@@ -23,3 +23,4 @@ This is a helper function to the master function \code{\link{sim_reg}},
 this function does the actual simulation to return the data for single 
 level models.
 }
+

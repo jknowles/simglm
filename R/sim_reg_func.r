@@ -137,7 +137,7 @@ sim_reg_single <- function(fixed, fixed_param, cov_param, n, error_var,
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'level1' or 'level2'. Must be same order as fixed formula 
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -159,7 +159,7 @@ sim_reg_single <- function(fixed, fixed_param, cov_param, n, error_var,
 #'      specification, each list must include:
 #'   \itemize{
 #'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'level1' or 'level2'.
+#'        \item var_type = Must be 'lvl1' or 'lvl2'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -171,14 +171,10 @@ sim_reg_single <- function(fixed, fixed_param, cov_param, n, error_var,
 #' @param unbal A vector of sample sizes for the number of observations for 
 #'  each level 2 cluster. Must have same length as level two sample size n. 
 #'  Alternative specification can be TRUE, which uses additional argument, 
-#'  unbal_design.
-#' @param unbal_design When unbal = TRUE, this specifies the design for unbalanced
-#'  simulation in one of two ways. It can represent the minimum and maximum 
-#'  sample size within a cluster via a named list. This will be drawn from a 
-#'  random uniform distribution with min and max specified. 
-#'  Secondly, the sample sizes within each cluster can be specified. 
-#'  This takes the form of a vector that must have the same length 
-#'  as the level two sample size.
+#'  unbalCont.
+#' @param unbalCont When unbal = TRUE, this specifies the minimum and maximum 
+#'  level one size, will be drawn from a random uniform distribution with min 
+#'  and max specified.
 #' @param lvl1_err_params Additional parameters passed as a list on to the 
 #'  level one error generating function
 #' @param arima_mod A list indicating the ARIMA model to pass to arima.sim. 
@@ -195,7 +191,7 @@ sim_reg_single <- function(fixed, fixed_param, cov_param, n, error_var,
 #' fixed_param <- c(4, 2, 6, 2.3, 7)
 #' random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 #' cov_param <- list(dist_fun = c('rnorm', 'rnorm'), 
-#'   var_type = c("level1", "level2"),
+#'   var_type = c("lvl1", "lvl2"),
 #'   opts = list(list(mean = 0, sd = 1.5), 
 #'   list(mean = 0, sd = 4)))
 #' n <- 150
@@ -211,46 +207,37 @@ sim_reg_nested <- function(fixed, random, fixed_param, random_param = list(),
                            cov_param, n, p, error_var, with_err_gen, 
                            arima = FALSE, data_str, cor_vars = NULL, 
                            fact_vars = list(NULL), unbal = FALSE, 
-                           unbal_design = NULL, lvl1_err_params = NULL, 
+                           unbalCont = NULL, lvl1_err_params = NULL, 
                            arima_mod = list(NULL), contrasts = NULL, ...) {
 
   fixed_vars <- attr(terms(fixed),"term.labels")  
-  rand_vars <- attr(terms(random),"term.labels")  
+  rand.vars <- attr(terms(random),"term.labels")  
 
-  if(unbal$level2 == FALSE) {
+  if(unbal == FALSE) {
     lvl1ss <- rep(p, n)
     if(is.null(lvl1ss)) stop("lvl1ss is NULL")
   } else {
-    if(length(unbal_design$level2) < 2) stop("Must specify unbal_design when unbal = TRUE")
-    if(is.null(names(unbal_design$level2))) {
-      if(length(unbal_design$level2) != n) stop('unbal_design must be same length as n')
-      lvl1ss <- unbal_design$level2
-    } else {
-      lvl1ss <- round(runif(n = n, min = unbal_design$level2$min, 
-                            max = unbal_design$level2$max), 0)
-    }
+    if(length(unbalCont) < 2) stop("Must specify unbalCont when unbal = TRUE")
+    lvl1ss <- round(runif(n = n, min = min(unbalCont), max = max(unbalCont)), 0)
   }
 
-  
+  rand_eff <- do.call(sim_rand_eff, c(random_param, n = n))
 
   Xmat <- sim_fixef_nested(fixed = fixed, fixed_vars = fixed_vars, 
                            cov_param = cov_param, n = n, p = lvl1ss, 
                             data_str = data_str, cor_vars = cor_vars, 
-                           fact_vars = fact_vars, 
-                           contrasts = contrasts)
+                           fact_vars = fact_vars, contrasts = contrasts)
   
   if(ncol(Xmat) != length(fixed_param)) {
     stop(paste(length(fixed_param), 'parameters specified for', ncol(Xmat), 
                'variables in design matrix'))
   }
   
-  rand_eff <- do.call(sim_rand_eff, c(random_param, n = n))
-
-  reff <- do.call("cbind", lapply(1:ncol(rand_eff), function(xx)
+  reff <- do.call("cbind", lapply(1:ncol(rand_eff), function(xx) 
     rep(rand_eff[,xx], times = lvl1ss)))
-  colnames(reff) <- c(unlist(lapply(1:ncol(rand_eff), function(xx)
+  colnames(reff) <- c(unlist(lapply(1:ncol(rand_eff), function(xx) 
     paste("b", xx-1, sep = ""))))
-
+  
   Zmat <- model.matrix(random, data.frame(Xmat))
 
   err <- sim_err_nested(error_var, n, p = lvl1ss, with_err_gen = with_err_gen,
@@ -288,8 +275,8 @@ sim_reg_nested <- function(fixed, random, fixed_param, random_param = list(),
 #'  Must be same length as fixed.
 #' @param random_param A list of named elements that must contain: 
 #'   \itemize{
-#'      \item  random_var: variance of random parameters,
-#'      \item  rand_gen: Name of simulation function for random effects.
+#'      \item  random_var = variance of random parameters,
+#'      \item  rand_gen = Name of simulation function for random effects.
 #'   }
 #'          Optional elements are:
 #'   \itemize{
@@ -315,7 +302,7 @@ sim_reg_nested <- function(fixed, random, fixed_param, random_param = list(),
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'level1', 'level2', or 'level3'. Must be same order as fixed formula 
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -337,7 +324,7 @@ sim_reg_nested <- function(fixed, random, fixed_param, random_param = list(),
 #'      specification, each list must include:
 #'   \itemize{
 #'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'level1', 'level2', or 'level3'.
+#'        \item var_type = Must be 'lvl1', 'lvl2', or 'lvl3'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -346,19 +333,20 @@ sim_reg_nested <- function(fixed, random, fixed_param, random_param = list(),
 #'        \item value.labels
 #'    }
 #'     See also \code{\link{sample}} for use of these optional arguments.
-#' @param unbal A named TRUE/FALSE list specifying whether unbalanced simulation 
-#'  design is desired. The named elements must be: "level2" or "level3" representing
-#'  unbalanced simulation for level two and three respectively. Default is FALSE,
-#'  indicating balanced sample sizes at both levels.
-#' @param unbal_design When unbal = TRUE, this specifies the design for unbalanced
-#'  simulation in one of two ways. It can represent the minimum and maximum 
-#'  sample size within a cluster via a named list. This will be drawn from a 
-#'  random uniform distribution with min and max specified. 
-#'  Secondly, the actual sample sizes within each cluster
-#'  can be specified. This takes the form of a vector that must have the same length 
-#'  as the level two or three sample size. These are specified as a named list in which
-#'  level two sample size is controlled via "level2" and level three sample size is 
-#'  controlled via "level3".
+#' @param unbal A vector of sample sizes for the number of observations for 
+#'  each level 2 cluster. Must have same length as level two sample size n. 
+#'  Alternative specification can be TRUE, which uses additional argument, 
+#'  unbalCont.
+#' @param unbal3 A vector of sample sizes for the number of observations for 
+#'  each level 3 cluster. Must have same length as level two sample size k. 
+#'  Alternative specification can be TRUE, which uses additional argument, 
+#'  unbalCont3.
+#' @param unbalCont When unbal = TRUE, this specifies the minimum and maximum 
+#'  level one size,will be drawn from a random uniform distribution with min 
+#'  and max specified.
+#' @param unbalCont3 When unbal3 = TRUE, this specifies the minimum and maximum 
+#'  level two size, will be drawn from a random uniform distribution with min 
+#'  and max specified.
 #' @param lvl1_err_params Additional parameters passed as a list on to the 
 #'  level one error generating function
 #' @param arima_mod A list indicating the ARIMA model to pass to arima.sim. 
@@ -377,7 +365,7 @@ sim_reg_nested <- function(fixed, random, fixed_param, random_param = list(),
 #' random_param <- list(random_var = c(7, 4, 2), rand_gen = 'rnorm')
 #' random_param3 <- list(random_var = c(4, 2), rand_gen = 'rnorm')
 #' cov_param <- list(dist_fun = c('rnorm', 'rnorm', 'rnorm'), 
-#'      var_type = c("level1", "level2", "level3"),
+#'      var_type = c("lvl1", "lvl2", "lvl3"),
 #'      opts = list(list(mean = 0, sd = 1.5),
 #'      list(mean = 0, sd = 4),
 #'      list(mean = 0, sd = 2)))
@@ -395,56 +383,37 @@ sim_reg_nested3 <- function(fixed, random, random3, fixed_param,
                             random_param = list(), random_param3 = list(), 
                             cov_param, k, n, p, error_var, with_err_gen, 
                             arima = FALSE, data_str, cor_vars = NULL, 
-                            fact_vars = list(NULL), 
-                            unbal = list("level2" = FALSE, "level3" = FALSE), 
-                            unbal_design = list("level2" = NULL, "level3" = NULL),
+                            fact_vars = list(NULL), unbal = FALSE, 
+                            unbal3 = FALSE, unbalCont = NULL, unbalCont3 = NULL,
                             lvl1_err_params = NULL, arima_mod = list(NULL),
                             contrasts = NULL, ...) {
 
   fixed_vars <- attr(terms(fixed),"term.labels")   
-  rand_vars <- attr(terms(random),"term.labels")   
-  rand_vars3 <- attr(terms(random3),"term.labels") 
+  rand.vars <- attr(terms(random),"term.labels")   
+  rand.vars3 <- attr(terms(random3),"term.labels") 
   
-  if(length(rand_vars)+1 != length(random_param$random_var)) 
+  if(length(rand.vars)+1 != length(random_param$random_var)) 
     stop("Random lengths not equal")
-  if(length(rand_vars3)+1 != length(random_param3$random_var)) 
+  if(length(rand.vars3)+1 != length(random_param3$random_var)) 
     stop("Third level random lengths not equal")
   
-  if(unbal$level3 == FALSE) {
+  if(unbal3 == FALSE) {
     lvl2ss <- rep(n, k)
     n <- sum(lvl2ss)
   } else {
-    if(is.null(unbal_design$level3)) {
-      stop("Must specify unbal_design$level3 when unbal$level3 = TRUE")
-    }
-    if(is.null(names(unbal_design$level3))) {
-      if(length(unbal_design$level3) != k) {
-        stop('unbal_design$level3 must be same length as k')
-      }
-      lvl2ss <- unbal_design$level3
-    } else {
-      lvl2ss <- round(runif(n = k, min = unbal_design$level3$min, 
-                            max = unbal_design$level3$max), 0)
-    }
+    if(length(unbalCont3) < 2) 
+      stop("Must specify unbalCont3 when unbal3 = TRUE")
+    lvl2ss <- round(runif(n = k, min = min(unbalCont3), 
+                          max = max(unbalCont3)), 0)
     n <- sum(lvl2ss)
   }
   
-  if(unbal$level2 == FALSE) {
+  if(unbal == FALSE) {
     lvl1ss <- rep(p, n)
     if(is.null(lvl1ss)) stop("lvl1ss is NULL")
   } else {
-    if(is.null(unbal_design$level2)) {
-      stop("Must specify unbal_design$level2 when unbal$level2 = TRUE")
-    }
-    if(is.null(names(unbal_design$level2))) {
-      if(length(unbal_design$level2) != n) {
-        stop('unbal_design$level2 must be same length as n')
-      }
-      lvl1ss <- unbal_design$level2
-    } else {
-      lvl1ss <- round(runif(n = n, min = unbal_design$level2$min, 
-                            max = unbal_design$level2$max), 0)
-    }
+    if(length(unbalCont) < 2) stop("Must specify unbalCont when unbal = TRUE")
+    lvl1ss <- round(runif(n = n, min = min(unbalCont), max = max(unbalCont)), 0)
   }
   
   end <- cumsum(lvl2ss)
@@ -453,6 +422,9 @@ sim_reg_nested3 <- function(fixed, random, random3, fixed_param,
   
   lvl3ss <- sapply(lapply(1:length(beg), function(xx) 
     lvl1ss[beg[xx]:end[xx]]), sum)
+  
+  rand_eff <- do.call(sim_rand_eff, c(random_param, n = n))
+  rand_eff3 <- do.call(sim_rand_eff, c(random_param3, n = k))
   
   Xmat <- sim_fixef_nested3(fixed, fixed_vars, cov_param, k, n = lvl2ss, 
                             p = lvl1ss, data_str = data_str, 
@@ -464,9 +436,6 @@ sim_reg_nested3 <- function(fixed, random, random3, fixed_param,
                'variables in design matrix'))
   }
   
-  rand_eff <- do.call(sim_rand_eff, c(random_param, n = n))
-  rand_eff3 <- do.call(sim_rand_eff, c(random_param3, n = k))
-  
   reff <- do.call("cbind", lapply(1:ncol(rand_eff), function(xx) 
     rep(rand_eff[,xx], times = lvl1ss)))
   colnames(reff) <- c(unlist(lapply(1:ncol(rand_eff), function(xx) 
@@ -476,7 +445,7 @@ sim_reg_nested3 <- function(fixed, random, random3, fixed_param,
     rep(rand_eff3[,xx], times = lvl3ss)))
   colnames(reff3) <- c(unlist(lapply(1:ncol(rand_eff3), function(xx) 
     paste("b", xx-1, "_3", sep = ""))))
-
+  
   Zmat <- model.matrix(random, data.frame(Xmat))
   Zmat3 <- model.matrix(random3, data.frame(Xmat))
   

@@ -15,8 +15,7 @@
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'level1' or 'level2'. 
-#'       Must be same order as fixed formula 
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -30,7 +29,7 @@
 #'      specification, each list must include:
 #'   \itemize{
 #'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'level1' or 'level2'.
+#'        \item var_type = Must be 'lvl1' or 'lvl2'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -42,7 +41,7 @@
 #' @param contrasts An optional list that specifies the contrasts to be used 
 #'  for factor variables (i.e. those variables with .f or .c). 
 #'  See \code{\link{contrasts}} for more detail.
-#' @importFrom purrr pmap invoke_map
+#' @importFrom purrr pmap
 #' @export 
 sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str, 
                              cor_vars = NULL, fact_vars = list(NULL), 
@@ -57,7 +56,7 @@ sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str,
   }
   fact.loc <- grep("\\.f$|\\.o$|\\.c$|_f$|_c$|_o$", 
                    fixed_vars, ignore.case = TRUE) 
-  w.var <- length(grep("level1", cov_param$var_type, ignore.case = TRUE))
+  w.var <- length(grep("lvl1", cov_param$var_type, ignore.case = TRUE))
   n.cont <- length(cov_param[[1]])
   
   if(length(fact.loc) > 0){
@@ -68,8 +67,8 @@ sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str,
   if(length(fact.loc) > 0){
     n.fact <- ifelse(length(int.loc) > 0, length(fact.loc[fact.loc != int.loc]), 
                      length(fact.loc))
-    n.fact.lvl1 <- length(grep("level1", fact_vars$var_type, ignore.case = TRUE))
-    n.fact.lvl2 <- length(grep("level2", fact_vars$var_type, ignore.case = TRUE))
+    n.fact.lvl1 <- length(grep("lvl1", fact_vars$var_type, ignore.case = TRUE))
+    n.fact.lvl2 <- length(grep("lvl2", fact_vars$var_type, ignore.case = TRUE))
   } else {
     n.fact <- 0
   } 
@@ -94,26 +93,30 @@ sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str,
     ))
     
     if(!is.null(cor_vars)) {
-      Xmat <- corr_variables(Xmat, cor_vars, cov_param, standardize = TRUE)
+      cov_data <- purrr::invoke_map(cov_param$dist_fun, cov_param$opts, 
+                                    n = 1000000)
+      cov_mu <- round(sapply(cov_data, mean), 2)
+      cov_sd <- round(sapply(cov_data, sd), 2)
+      
+      Xmat <- do.call('cbind', lapply(seq_len(ncol(Xmat)), function(xx) 
+        standardize(Xmat[, xx], mean = cov_mu[xx], sd = cov_sd[xx])))
+      
+      c_mat <- matrix(nrow = n.cont, ncol = n.cont)
+      diag(c_mat) <- 1
+      c_mat[upper.tri(c_mat)] <- c_mat[lower.tri(c_mat)] <- cor_vars
+      cov <- diag(cov_sd) %*% c_mat %*% diag(cov_sd)
+      es <- eigen(cov, symmetric = TRUE)
+      ev <- es$values
+      Xmat <- t(cov_mu + es$vectors %*% diag(sqrt(pmax(ev, 0)), 
+                                             length(cov_sd)) %*% t(Xmat))
     }
     if(data_str == "long") {
-      if(is.null(cov_param$time_var)) {
-        Xmat <- cbind(unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1)), 
-                      Xmat)
-      } else {
-        Xmat <- cbind(unlist(lapply(seq_along(p), function(xx) 
-          cov_param$time_var[1:p[xx]])), 
-                      Xmat)
-      }
+      Xmat <- cbind(unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1)), 
+                    Xmat)
     }
   } else {
     if(data_str == 'long') {
-      if(is.null(cov_param$time_var)) {
-        Xmat <- unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1))
-      } else {
-        Xmat <- unlist(lapply(seq_along(p), function(xx) 
-          cov_param$time_var[1:p[xx]]))
-      }
+      Xmat <- unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1))
     } else {
       Xmat <- NULL
     }
@@ -157,7 +160,7 @@ sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str,
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       either 'level1', 'level2', or 'level3'. Must be same order as fixed formula 
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
 #'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
@@ -172,7 +175,7 @@ sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str,
 #'      specification, each list must include:
 #'   \itemize{
 #'        \item numlevels = Number of levels for ordinal or factor variables.
-#'        \item var_type = Must be 'level1', 'level2', or 'level3'.
+#'        \item var_type = Must be 'lvl1', 'lvl2', or 'lvl3'.
 #'    }
 #'    Optional arguments include:
 #'    \itemize{
@@ -184,7 +187,7 @@ sim_fixef_nested <- function(fixed, fixed_vars, cov_param, n, p, data_str,
 #' @param contrasts An optional list that specifies the contrasts to be used for factor
 #'      variables (i.e. those variables with .f or .c). See \code{\link{contrasts}} for 
 #'      more detail.
-#' @importFrom purrr pmap invoke_map
+#' @importFrom purrr pmap
 #' @export 
 sim_fixef_nested3 <- function(fixed, fixed_vars, cov_param, k, n, p, data_str, 
                              cor_vars = NULL, fact_vars = list(NULL),
@@ -232,26 +235,30 @@ sim_fixef_nested3 <- function(fixed, fixed_vars, cov_param, k, n, p, data_str,
     ))
     
     if(!is.null(cor_vars)) {
-      Xmat <- corr_variables(Xmat, cor_vars, cov_param, standardize = TRUE)
+      cov_data <- purrr::invoke_map(cov_param$dist_fun, cov_param$opts, 
+                                    n = 1000000)
+      cov_mu <- round(sapply(cov_data, mean), 2)
+      cov_sd <- round(sapply(cov_data, sd), 2)
+      
+      Xmat <- do.call('cbind', lapply(seq_len(ncol(Xmat)), function(xx) 
+        standardize(Xmat[, xx], mean = cov_mu[xx], sd = cov_sd[xx])))
+      
+      c_mat <- matrix(nrow = n.cont, ncol = n.cont)
+      diag(c_mat) <- 1
+      c_mat[upper.tri(c_mat)] <- c_mat[lower.tri(c_mat)] <- cor_vars
+      cov <- diag(cov_sd) %*% c_mat %*% diag(cov_sd)
+      es <- eigen(cov, symmetric = TRUE)
+      ev <- es$values
+      Xmat <- t(cov_mu + es$vectors %*% diag(sqrt(pmax(ev, 0)), 
+                                             length(cov_sd)) %*% t(Xmat))
     }
     if(data_str == "long") {
-      if(is.null(cov_param$time_var)) {
-        Xmat <- cbind(unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1)), 
-                      Xmat)
-      } else {
-        Xmat <- cbind(unlist(lapply(seq_along(p), function(xx) 
-          cov_param$time_var[1:p[xx]])), 
-                      Xmat)
-      }
+      Xmat <- cbind(unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1)), 
+                    Xmat)
     }
   } else {
     if(data_str == 'long') {
-      if(is.null(cov_param$time_var)) {
-        Xmat <- unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1))
-      } else {
-        Xmat <- unlist(lapply(seq_along(p), function(xx) 
-          cov_param$time_var[1:p[xx]]))
-      }
+      Xmat <- unlist(lapply(seq_along(p), function(xx) (1:p[xx]) - 1))
     } else {
       Xmat <- NULL
     }
@@ -296,7 +303,8 @@ sim_fixef_nested3 <- function(fixed, fixed_vars, cov_param, k, n, p, data_str,
 #'   \itemize{
 #'     \item dist_fun: This is a quoted R distribution function.
 #'     \item var_type: This is the level of variable to generate. Must be 
-#'       'single'. Must be same order as fixed formula above.
+#'       either 'lvl1', 'lvl2', or 'lvl3'. Must be same order as fixed formula 
+#'       above.
 #'   }
 #'   Optional arguments to the distribution functions are in a nested list,
 #'    see the examples for example code for this.
@@ -318,7 +326,7 @@ sim_fixef_nested3 <- function(fixed, fixed_vars, cov_param, k, n, p, data_str,
 #' @param contrasts An optional list that specifies the contrasts to be used 
 #'  for factor variables (i.e. those variables with .f or .c). 
 #'  See \code{\link{contrasts}} for more detail.
-#' @importFrom purrr pmap invoke_map
+#' @importFrom purrr pmap
 #' @export 
 sim_fixef_single <- function(fixed, fixed_vars, n, cov_param, cor_vars = NULL, 
                              fact_vars = list(NULL), contrasts = NULL){
@@ -359,7 +367,23 @@ sim_fixef_single <- function(fixed, fixed_vars, n, cov_param, cor_vars = NULL,
                                              ))
     
     if(!is.null(cor_vars)) {
-      Xmat <- corr_variables(Xmat, cor_vars, cov_param, standardize = TRUE)
+      
+      cov_data <- purrr::invoke_map(cov_param$dist_fun, cov_param$opts, 
+                                  n = 1000000)
+      cov_mu <- round(sapply(cov_data, mean), 2)
+      cov_sd <- round(sapply(cov_data, sd), 2)
+      
+      Xmat <- do.call('cbind', lapply(seq_len(ncol(Xmat)), function(xx) 
+        standardize(Xmat[, xx], mean = cov_mu[xx], sd = cov_sd[xx])))
+      
+      c_mat <- matrix(nrow = n.cont, ncol = n.cont)
+      diag(c_mat) <- 1
+      c_mat[upper.tri(c_mat)] <- c_mat[lower.tri(c_mat)] <- cor_vars
+      cov <- diag(cov_sd) %*% c_mat %*% diag(cov_sd)
+      es <- eigen(cov, symmetric = TRUE)
+      ev <- es$values
+      Xmat <- t(cov_mu + es$vectors %*% diag(sqrt(pmax(ev, 0)), 
+                                             length(cov_sd)) %*% t(Xmat))
     }
   } else {
     Xmat <- NULL
@@ -399,27 +423,27 @@ sim_fixef_single <- function(fixed, fixed_vars, n, cov_param, cor_vars = NULL,
 #' @param prob Probability of levels for variable, must be same length as 
 #'  numlevels
 #' @param var_type Variable type for the variable, must be either 
-#'   "level1", "level2", "level3", or "single"
-#' @param value_labels Optional argument with value labels for variable, 
+#'   "lvl1", "lvl2", "lvl3", or "single"
+#' @param value.labels Optional argument with value labels for variable, 
 #'        converts variable to factor.
 #' @export 
 sim_factor <- function(k = NULL, n, p, numlevels, replace = TRUE, prob = NULL, 
-                       var_type = c('level1', 'level2', 'level3', 'single'), 
-                       value_labels = NULL) {
+                       var_type = c('lvl1', 'lvl2', 'lvl3', 'single'), 
+                       value.labels = NULL) {
 
-  if(var_type == 'single' | var_type == 'level2') {
+  if(var_type == 'single' | var_type == 'lvl2') {
     if(replace == FALSE & numlevels < n) {
-      stop("If replace = FALSE, numlevels must be greater than n for level2 or single")
+      stop("If replace = FALSE, numlevels must be greater than n for lvl2 or single")
     }
   }
-  if(var_type == "level1") {
+  if(var_type == "lvl1") {
     if(replace == FALSE & numlevels < sum(p)){
-      stop("If replace = FALSE, numlevels must be greater than sum(p) for level1")
+      stop("If replace = FALSE, numlevels must be greater than sum(p) for lvl1")
     }
   }
-  if(var_type == "level3") {
+  if(var_type == "lvl3") {
     if(replace == FALSE & numlevels < k) {
-      stop("If replace = FALSE, numlevels must be greater than k for level3")
+      stop("If replace = FALSE, numlevels must be greater than k for lvl3")
     }
   }
   
@@ -437,19 +461,19 @@ sim_factor <- function(k = NULL, n, p, numlevels, replace = TRUE, prob = NULL,
   cat_var <- switch(var_type,
          single = sample(x = numlevels, size = n, replace = replace, 
                          prob = prob),
-         level3 = rep(sample(x = numlevels, size = k, replace = replace, 
+         lvl3 = rep(sample(x = numlevels, size = k, replace = replace, 
                            prob = prob), times = lvl3ss),
-         level2 = rep(sample(x = numlevels, size = length(p), replace = replace, 
+         lvl2 = rep(sample(x = numlevels, size = length(p), replace = replace, 
                            prob = prob), times = p),
-         level1 = sample(x = numlevels, size = sum(p), replace = replace, 
+         lvl1 = sample(x = numlevels, size = sum(p), replace = replace, 
                        prob = prob)
          )
   
-  if(!is.null(value_labels)) {
-    if(length(value_labels) != numlevels) { 
-      stop("value_labels must be same length as numlevels") 
+  if(!is.null(value.labels)) {
+    if(length(value.labels) != numlevels) { 
+      stop("value.labels must be same length as numlevels") 
       }
-    cat_var <- factor(cat_var, labels = value_labels)
+    cat_var <- factor(cat_var, labels = value.labels)
   }
   
   cat_var
@@ -465,12 +489,12 @@ sim_factor <- function(k = NULL, n, p, numlevels, replace = TRUE, prob = NULL,
 #' @param p Number of within cluster observations for multilevel
 #' @param dist_fun A distribution function. This argument takes a quoted
 #'      R distribution function (e.g. 'rnorm').
-#' @param var_type Variable type for the variable, must be either "level1", 
-#'      "level2", "level3", or "single"
+#' @param var_type Variable type for the variable, must be either "lvl1", 
+#'      "lvl2", or "single"
 #' @param ... Additional parameters to pass to the dist_fun argument.
 #' @export 
 sim_continuous <- function(k = NULL, n, p, dist_fun,
-                           var_type = c('level1', 'level2', 'level3', 'single'),
+                           var_type = c('lvl1', 'lvl2', 'lvl3', 'single'),
                            ...) {
   
   end <- cumsum(n)
@@ -486,11 +510,11 @@ sim_continuous <- function(k = NULL, n, p, dist_fun,
   
   contVar <- switch(var_type,
                    single = unlist(lapply(n, FUN = dist_fun, ...)),
-                   level3 = rep(unlist(lapply(k, FUN = dist_fun, ...)), 
+                   lvl3 = rep(unlist(lapply(k, FUN = dist_fun, ...)), 
                               times = lvl3ss),
-                   level2 = rep(unlist(lapply(length(p), FUN = dist_fun, ...)), 
+                   lvl2 = rep(unlist(lapply(length(p), FUN = dist_fun, ...)), 
                               times = p),
-                   level1 = unlist(lapply(sum(p), FUN = dist_fun, ...))
+                   lvl1 = unlist(lapply(sum(p), FUN = dist_fun, ...))
   )
   contVar
 }
